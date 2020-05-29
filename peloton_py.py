@@ -97,7 +97,12 @@ for workout_id in workout_ids2:
           df_tot['id'] = workout_id
      #Append each run through the loop to the dataframe
      df_tot_metrics = df_tot_metrics.append(df_tot, sort=False)
-     df_avg_metrics = df_avg_metrics.append(df_avg, sort=False)
+     try:
+          df_avg_metrics = df_avg_metrics.append(df_avg, sort=False)
+     except:
+          pass
+     else:
+          df_avg_metrics = df_avg_metrics.append(df_avg, sort=False)
 
 df_tot_metrics_clean = df_tot_metrics.drop_duplicates()
 df_avg_metrics_clean = df_avg_metrics.drop_duplicates()
