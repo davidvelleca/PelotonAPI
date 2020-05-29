@@ -79,5 +79,42 @@ for workout_id in workout_ids2:
      df_workout_metrics = df_workout_metrics.append(df_metrics, sort=False)
 ```
 
+## GET: Workout Achievements
+This bit pulls in the data behind the badges you earn across your Peloton Fitness Journey.  Due to the fact that you can earn multiple achievements per workout, I've flattened this out to return only one row per workout, currently accounting for four earned achievements on a single workout.  I'm sure that this could be done cleaner, and this number be made dynamic, but this was the easiest solution I could come up with.  See the disclaimer at the top of the page.
+```
+for workout_id in workout_ids2:
+     response = s.get('https://api.pelotoncycle.com/api/workout/{}/achievements'.format(workout_id))
+     data3 = response.json()
+     #Flatten API response into a temporary dataframe
+     df_workout_achievements_stg = json_normalize(data3['data'])
+     df_workout_achievements = df_workout_achievements.append(df_workout_achievements_stg, sort=False, ignore_index=True)
+
+df_achievements = df_workout_achievements.drop(['id', 'template.id', 'template.slug', 'template_id', 'user_id'], axis=1)
+
+#Work to put all achievements for a workout on one row - I've chosen to break out to 4 achievements on a workout.  Could possibly 
+#be more.  Would need to account for this if so.
+#First Step - create a counter by Workout ID
+df_achievements['counter'] = df_achievements.sort_values(['workout_id'], ascending=[1]).groupby('workout_id').cumcount() + 1
+#Second Step - Break into separate series based on the counter
+df_achievements_1 = df_achievements.loc[df_achievements['counter'] == 1]
+df_achievements_2 = df_achievements.loc[df_achievements['counter'] == 2]
+df_achievements_3 = df_achievements.loc[df_achievements['counter'] == 3]
+df_achievements_4 = df_achievements.loc[df_achievements['counter'] == 4]
+#Third Step - Rename columns
+df_achievements_1.columns = ['template.description_a','template.image_url_a','template.name_a','workout_id','counter_a']
+df_achievements_2.columns = ['template.description_b','template.image_url_b','template.name_b','workout_id','counter_b']
+df_achievements_3.columns = ['template.description_c','template.image_url_c','template.name_c','workout_id','counter_c']
+df_achievements_4.columns = ['template.description_d','template.image_url_d','template.name_d','workout_id','counter_d']
+#Fourth Step - Convert series to dataframes
+df_achievements_a = pd.DataFrame(df_achievements_1)
+df_achievements_b = pd.DataFrame(df_achievements_2)
+df_achievements_c = pd.DataFrame(df_achievements_3)
+df_achievements_d = pd.DataFrame(df_achievements_4)
+#Final Step - Merge the four dataframes into a dataframe with a single row per workout_id
+df_achievements_final = reduce(lambda x,y: pd.merge(x,y, on='workout_id', how='outer'), [df_achievements_a, df_achievements_b, df_achievements_c, df_achievements_d])
+cols = [c for c in df_achievements_final.columns if c.lower()[:7] != 'counter']
+df_achievements_final = df_achievements_final[cols]
+```
+
 # Attribution
 I heavily leveraged the API documentation at https://github.com/geudrik/peloton-client-library/blob/master/API_DOCS.md to work through the API. 
